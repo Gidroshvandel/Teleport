@@ -178,8 +178,8 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                 }
                 if (request.get("REQUEST").toString().equals("DELOBJECT"))
                 {
-                    JSONObject ons = (JSONObject)request.get("ID");
-                    HttpHelloWorldServer.list.remove(Integer.parseInt(ons.get("ID").toString()));
+                    int ons = Integer.parseInt(request.get("ID").toString());
+                    HttpHelloWorldServer.list.remove(ons);
                 }
 
                 ByteBuf response_content = Unpooled.wrappedBuffer(json_output.getBytes(CharsetUtil.UTF_8));
