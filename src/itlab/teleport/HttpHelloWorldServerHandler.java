@@ -13,7 +13,7 @@ package itlab.teleport;/*
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+import com.mysql.jdbc.Driver;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -37,6 +37,7 @@ import org.json.simple.parser.ParseException;
 
 
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
     }
 
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, Object msg) {
+    public void channelRead0(ChannelHandlerContext ctx, Object msg) throws SQLException {
         if (msg instanceof FullHttpRequest) {
 //        if (msg instanceof HttpObjectAggregator) {
             HttpRequest req = (HttpRequest) msg;
@@ -111,6 +112,27 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
         }
 
         if (msg instanceof HttpContent) {
+            //      Подключение к БД
+            Connection c = null;
+            String user = "root";//Логин пользователя
+            String password = "";//Пароль пользователя
+            String url = "jdbc:mysql://localhost:3306/Teleport";//URL адрес
+            String driver = "com.mysql.jdbc.Driver";//Имя драйвера
+            try {
+                Class.forName(driver);//Регистрируем драйвер
+            } catch (ClassNotFoundException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            //Соединение с БД
+            try{
+                c = DriverManager.getConnection(url, user, password);//Установка соединения с БД
+                System.out.println("Connect to BD: Success");
+            } catch(Exception e){
+                System.out.println("Connect to BD: Faild");
+                e.printStackTrace();
+            }
+//      Подключение к БД
 
 
             String json_input = "";
@@ -158,28 +180,58 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
 
                 if (request.get("REQUEST").toString().equals("GETLIST"))
                 {
-
-
-                    for (int i = 0; i < HttpHelloWorldServer.list.size(); i++) {
-                        array.add(HttpHelloWorldServer.list.get(i).getJOSON());
+                    try {
+                        Statement st = c.createStatement();//Готовим запрос
+                        ResultSet rs = st.executeQuery("select * from Request_list");//Выполняем запрос к БД, результат в переменной rs
+                        while (rs.next()) {
+                            JSONObject buf = new JSONObject();
+                            buf.put("ID", rs.getString("ID"));
+                            buf.put("URI", rs.getString("URI"));
+                            buf.put("TAG", rs.getString("TAG"));
+                            buf.put("LOGIN", rs.getString("LOGIN"));
+                            array.add(buf);
+                        }
+                    }
+                    catch (Exception e) {
+                        System.out.println("Disconnected_BD");
                     }
 
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("ARRAY", array);
-                    json_output = jsonObject.toString();
+
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("ARRAY", array);
+                        json_output = jsonObject.toString();
+
                 }
                 if (request.get("REQUEST").toString().equals("ADDOBJECT"))
                 {
-                    JSONObject ons = (JSONObject)request.get("OBJECT");
-                    HttpHelloWorldServer.list.add(0, new Element_list(ons.get("TAG").toString(),ons.get("URI").toString()));
+                    try {
+                        JSONObject ons = (JSONObject) request.get("OBJECT");
+                        Statement st = c.createStatement();//Готовим запрос
+                        System.out.println("INSERT INTO Request_list (TAG, URI) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString() + "')");
+                        st.executeUpdate("INSERT INTO Request_list (TAG, URI) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString() + "')");//Выполняем запрос к БД
+                    }
+                    catch (Exception e)
+                    {
+                        System.out.println("Disconnected_BD");
+                    }
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("ARRAY", "HEllO");
+                    jsonObject.put("STATUS", "OK");
                     json_output = jsonObject.toString();
                 }
                 if (request.get("REQUEST").toString().equals("DELOBJECT"))
                 {
                     int ons = Integer.parseInt(request.get("ID").toString());
-                    HttpHelloWorldServer.list.remove(ons);
+                    try {
+                        JSONObject buf = (JSONObject) request.get("OBJECT");
+                        Statement st = c.createStatement();//Готовим запрос
+                        System.out.println("DELETE Request_list WHERE ID ="+ ons);
+                        st.execute("DELETE FROM Request_list WHERE ID = " + ons);//Выполняем запрос к БД
+                    }
+                    catch (Exception e)
+                    {
+                        System.out.println("Disconnected_BD");
+                    }
+//                    HttpHelloWorldServer.list.remove(ons);
                 }
 
                 ByteBuf response_content = Unpooled.wrappedBuffer(json_output.getBytes(CharsetUtil.UTF_8));
@@ -187,6 +239,14 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
 
                 ctx.writeAndFlush(resp);
                 ctx.close();
+                    //Обязательно необходимо закрыть соединение
+                    try {
+                        if(c != null)
+                            c.close();
+                    } catch (SQLException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
 
 //                if (!writeResponse(trailer, ctx)) {
 //                    // If keep-alive is off, close the connection once the content is fully written.

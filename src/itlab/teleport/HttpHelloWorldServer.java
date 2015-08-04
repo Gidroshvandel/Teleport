@@ -26,8 +26,9 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-import org.json.simple.JSONArray;
 
+
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,16 +37,10 @@ import java.util.List;
  * in a pretty plaintext form.
  */
 public final class HttpHelloWorldServer {
-    public static List<Element_list> list = new ArrayList<>();
     static final boolean SSL = System.getProperty("ssl") != null;
     static final int PORT = Integer.parseInt(System.getProperty("port", SSL? "8443" : "8080"));
 
     public static void main(String[] args) throws Exception {
-
-        list.add(new Element_list("DemoDay", "rtsp://s-projects.ru:1935/live/android_test"));
-        list.add(new Element_list("Тестовый поток", "rtsp://s-projects.ru:1935/live/test.stream/playlist.m3u8"));
-        list.add(new Element_list("DemoDay", "rtsp://s-projects.ru:1935/live/android_test"));
-        list.add(new Element_list("Woooooowza", "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"));
         // Configure SSL.
         final SslContext sslCtx;
         if (SSL) {
