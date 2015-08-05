@@ -1,5 +1,6 @@
 package itlab.teleport;
 
+import com.sun.org.apache.bcel.internal.generic.GOTO;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -97,27 +98,29 @@ public class JSON_Handler {
         if (request.get("REQUEST").toString().equals("AUTHORIZATION"))
         {
             try {
+                int error = 0;
                 JSONObject ons = (JSONObject) request.get("OBJECT");
                 Statement st = BD_Connect.c.createStatement();//Готовим запрос
                 ResultSet rs = st.executeQuery("Select 1");
                 try {
                     rs = st.executeQuery("select * from User_info WHERE Login = '" +ons.get("LOGIN")+ "'");//Выполняем запрос к БД
+                    rs.next();
+                    rs.getString("User_password");
                 }
                 catch (Exception e)
                 {
                     JSON_Return("Status", "INVALID_LOGIN");
                     System.out.println("INVALID_LOGIN");
+                    error = 1;
                 }
-                rs.next();
-                System.out.println(rs.getString("User_password"));
-                if (ons.get("PASSWORD").toString().equals(rs.getString("User_password")))
-                {
-                    JSON_Return("Status", "OK");
-                }
-                else
-                {
-                    JSON_Return("Status", "PASSWORD_WRONG");
-                    System.out.println("PASSWORD_WRONG");
+                if (error != 1) {
+                    System.out.println(rs.getString("User_password"));
+                    if (ons.get("PASSWORD").toString().equals(rs.getString("User_password"))) {
+                        JSON_Return("Status", "OK");
+                    } else {
+                        JSON_Return("Status", "PASSWORD_WRONG");
+                        System.out.println("PASSWORD_WRONG");
+                    }
                 }
             } catch (Exception e)
             {
@@ -128,10 +131,24 @@ public class JSON_Handler {
         if (request.get("REQUEST").toString().equals("REGISTRATION")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
         {
             try {
+                int error = 0;
                 JSONObject ons = (JSONObject) request.get("OBJECT");
                 Statement st = BD_Connect.c.createStatement();//Готовим запрос
-                System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','http://192.168.0.210:81/hls/" + ons.get("LOGIN").toString() + ".m3u8','" + ons.get("LOGIN").toString() + "')");
-                st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','rtmp://192.168.0.210:1936/videochat/" + ons.get("LOGIN").toString() + "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
+                ResultSet rs;
+                try {
+                    rs = st.executeQuery("select * from User_info WHERE Login = '" + ons.get("LOGIN") + "'");//Выполняем запрос к БД
+                    rs.next();
+                    rs.getString("Login");
+                } catch (Exception e) {
+                    error = 1;
+                    st.executeUpdate("INSERT INTO User_info (Login, User_password, User_name) values('" + ons.get("LOGIN").toString() + "','" + ons.get("PASSWORD").toString() + "','" + ons.get("USERNAME").toString() + "')");//Выполняем запрос к БД
+                    JSON_Return("Status", "OK");
+                    System.out.println("INSERT INTO User_info (Login, User_password, User_name) values('" + ons.get("LOGIN").toString() + "','" + ons.get("PASSWORD").toString() + "','" + ons.get("USERNAME").toString() + "')");
+                }
+                if (error == 0) {
+                    JSON_Return("Status", "INVALID_LOGIN");
+                    System.out.println("INVALID_LOGIN");
+                }
             }
             catch (Exception e)
             {

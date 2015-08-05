@@ -36,7 +36,7 @@ import java.util.List;
 
 
 
-public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Object> {
+public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private final StringBuilder buf = new StringBuilder();
     @Override
@@ -63,9 +63,7 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
 
         if (msg instanceof HttpContent) {
 
-            BD_Connect BD = new BD_Connect(); //Объявление нового экземпляра класса
-
-            BD.BD_Connect(); //Подключение к базе данных
+            new BD_Connect().BD_Connect(); //Подключение к базе данных
 
             HttpContent httpContent = (HttpContent) msg;
 
@@ -93,9 +91,7 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                 }
                 System.out.println(buf);
 
-                JSON_Handler JSON = new JSON_Handler(); //Объявление нового экземпляра класса
-
-                JSON.JSON_Handler(); // Вызов обработчика JSON запросов
+                new JSON_Handler().JSON_Handler(); // Вызов обработчика JSON запросов
 
                 ByteBuf response_content = Unpooled.wrappedBuffer(JSON_Handler.json_output.getBytes(CharsetUtil.UTF_8));
                 HttpResponse resp = new DefaultFullHttpResponse(HTTP_1_1, OK, response_content);
