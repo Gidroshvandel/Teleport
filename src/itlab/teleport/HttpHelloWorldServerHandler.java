@@ -13,8 +13,6 @@ package itlab.teleport;/*
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-import com.mysql.jdbc.Driver;
-
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
@@ -38,13 +36,11 @@ import org.json.simple.parser.ParseException;
 
 import java.io.IOException;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 
 
 public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Object> {
-    private static final byte[] CONTENT = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd' };
 
     private final StringBuilder buf = new StringBuilder();
     @Override
@@ -55,25 +51,7 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Object msg) throws SQLException {
         if (msg instanceof FullHttpRequest) {
-//        if (msg instanceof HttpObjectAggregator) {
             HttpRequest req = (HttpRequest) msg;
-
-//            if (HttpHeaders.is100ContinueExpected(req)) {
-//                ctx.write(new DefaultFullHttpResponse(HTTP_1_1, CONTINUE));
-//            }
-//            boolean keepAlive = HttpHeaders.isKeepAlive(req);
-//            FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(CONTENT));
-//            response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
-//            response.headers().set(HttpHeaders.Names.CONTENT_LENGTH, response.content().readableBytes());
-
-//            if (!keepAlive) {
-//                ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-//            } else {
-//                response.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
-//                ctx.write(response);
-//            }
-
-//            System.out.println(req.trailingHeaders().get(HttpHeaders.Names.CONTENT_TYPE));
             final HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), req);
 
             List<InterfaceHttpData> data = decoder.getBodyHttpDatas();
@@ -85,30 +63,6 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                     e.printStackTrace();
                 }
             }
-//
-//            HttpResponse resp = new DefaultHttpResponse(HTTP_1_1, OK);
-//            ctx.writeAndFlush(resp);                                             �����
-//            ctx.close();
-//            final InterfaceHttpData data1 = decoder.getBodyHttpData("value");
-
-//            try {
-//            while (decoder.hasNext()) {
-//                final InterfaceHttpData data = decoder.next();
-//                if (data != null) {
-//                    try {
-//                        Attribute attribute = (Attribute) data;
-//                        System.out.println(attribute.getName());
-//                        System.out.println(attribute.getValue());
-//                    } catch (IOException e) {
-////                        e.printStackTrace();
-//                    } finally {
-//                        data.release();
-//                    }
-//                }
-//            }
-//            } catch (HttpPostRequestDecoder.EndOfDataDecoderException e) {
-////                e.toString()
-//            }
         }
 
         if (msg instanceof HttpContent) {
@@ -146,11 +100,9 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
             ByteBuf content = httpContent.content();
             if (content.isReadable()) {
                 json_input = content.toString(CharsetUtil.UTF_8);
-//                json_input = content.toString();
                 buf.append("CONTENT: ");
                 buf.append(content.toString(CharsetUtil.UTF_8));
                 buf.append("\r\n");
-//                appendDecoderResult(buf, request);
             }
 
             if (msg instanceof LastHttpContent) {
@@ -207,22 +159,23 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                     try {
                         JSONObject ons = (JSONObject) request.get("OBJECT");
                         Statement st = c.createStatement();//Готовим запрос
-                        System.out.println("INSERT INTO Request_list (TAG, URI) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString() + "')");
-                        st.executeUpdate("INSERT INTO Request_list (TAG, URI) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString() + "')");//Выполняем запрос к БД
+                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString()+ "','" + ons.get("LOGIN").toString() + "')");
+                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString()+ "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
                     }
                     catch (Exception e)
                     {
                         System.out.println("Disconnected_BD");
                     }
+//                    Statement st = c.createStatement();//Готовим запрос
+//                    ResultSet rs = st.executeQuery("select * from Request_list");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("STATUS", "OK");
+                    jsonObject.put("Status", "OK");
                     json_output = jsonObject.toString();
                 }
                 if (request.get("REQUEST").toString().equals("DELOBJECT"))
                 {
                     int ons = Integer.parseInt(request.get("ID").toString());
                     try {
-                        JSONObject buf = (JSONObject) request.get("OBJECT");
                         Statement st = c.createStatement();//Готовим запрос
                         System.out.println("DELETE Request_list WHERE ID ="+ ons);
                         st.execute("DELETE FROM Request_list WHERE ID = " + ons);//Выполняем запрос к БД
@@ -231,7 +184,71 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                     {
                         System.out.println("Disconnected_BD");
                     }
-//                    HttpHelloWorldServer.list.remove(ons);
+                }
+                if (request.get("REQUEST").toString().equals("PUSHSTREAM")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
+                {
+                    try {
+                        JSONObject ons = (JSONObject) request.get("OBJECT");
+                        Statement st = c.createStatement();//Готовим запрос
+                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','http://192.168.0.210:81/hls/" + ons.get("LOGIN").toString() + ".m3u8','" + ons.get("LOGIN").toString() + "')");
+                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','rtmp://192.168.0.210:1936/videochat/" + ons.get("LOGIN").toString() + "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
+                    }
+                    catch (Exception e)
+                    {
+                        System.out.println("Disconnected_BD");
+                    }
+                }
+                if (request.get("REQUEST").toString().equals("AUTHORIZATION")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
+                {
+                    try {
+                        JSONObject ons = (JSONObject) request.get("OBJECT");
+                        Statement st = c.createStatement();//Готовим запрос
+                       ResultSet rs = st.executeQuery("Select 1");
+                        try {
+                            rs = st.executeQuery("select * from User_info WHERE Login = '" +ons.get("LOGIN")+ "'");//Выполняем запрос к БД
+                        }
+                        catch (Exception e)
+                        {
+                            JSONObject jsonObject = new JSONObject();
+                            jsonObject.put("Status", "INVALID_LOGIN");
+                            json_output = jsonObject.toString();
+                            System.out.println("INVALID_LOGIN");
+                        }
+                        rs.next();
+                        System.out.println(rs.getString("User_password"));
+                        if (ons.get("PASSWORD").toString().equals(rs.getString("User_password")))
+                        {
+                            JSONObject jsonObject = new JSONObject();
+                            jsonObject.put("Status", "OK");
+                            json_output = jsonObject.toString();
+                        }
+                        else
+                        {
+                            JSONObject jsonObject = new JSONObject();
+                            jsonObject.put("Status", "PASSWORD_WRONG");
+                            json_output = jsonObject.toString();
+                            System.out.println("PASSWORD_WRONG");
+                        }
+                    } catch (Exception e)
+                    {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("Status", "ERROR");
+                        json_output = jsonObject.toString();
+                        System.out.println("Disconnected_BD");
+                    }
+                }
+                if (request.get("REQUEST").toString().equals("REGISTRATION")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
+                {
+                    try {
+                        JSONObject ons = (JSONObject) request.get("OBJECT");
+                        Statement st = c.createStatement();//Готовим запрос
+                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','http://192.168.0.210:81/hls/" + ons.get("LOGIN").toString() + ".m3u8','" + ons.get("LOGIN").toString() + "')");
+                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','rtmp://192.168.0.210:1936/videochat/" + ons.get("LOGIN").toString() + "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
+                    }
+                    catch (Exception e)
+                    {
+                        System.out.println("Disconnected_BD");
+                    }
                 }
 
                 ByteBuf response_content = Unpooled.wrappedBuffer(json_output.getBytes(CharsetUtil.UTF_8));
@@ -239,28 +256,18 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
 
                 ctx.writeAndFlush(resp);
                 ctx.close();
-                    //Обязательно необходимо закрыть соединение
+                    //закрытие соединения с БД
                     try {
                         if(c != null)
+                            System.out.println("Connection_close");
                             c.close();
                     } catch (SQLException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
 
-//                if (!writeResponse(trailer, ctx)) {
-//                    // If keep-alive is off, close the connection once the content is fully written.
-//                    ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-//                }
             }
         }
-//        if (msg instanceof DefaultLastHttpContent) {
-//            DefaultLastHttpContent content = (DefaultLastHttpContent) msg;
-//            System.out.print(content.toString());
-//        }
-//        if (msg instanceof HttpObjectAggregator) {
-//            HttpObjectAggregator content = (HttpObjectAggregator) msg;
-//        }
     }
 
     @Override

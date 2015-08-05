@@ -28,9 +28,6 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * An HTTP server that sends back the content of the received HTTP request

@@ -19,7 +19,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import io.netty.handler.ssl.SslContext;
 
 public class HttpHelloWorldServerInitializer extends ChannelInitializer<SocketChannel> {
@@ -38,7 +37,6 @@ public class HttpHelloWorldServerInitializer extends ChannelInitializer<SocketCh
         }
         p.addLast("inflater", new HttpContentDecompressor());
         p.addLast("decoder", new HttpRequestDecoder(4096, 8192, 8192, false));
-//        p.addLast("decoder", new HttpPostRequestDecoder(4096, 8192, 8192, false));
         p.addLast("aggregator", new HttpObjectAggregator(1048576));
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("deflater", new HttpContentCompressor());
