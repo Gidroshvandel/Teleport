@@ -27,10 +27,6 @@ import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.util.CharsetUtil;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 
 
@@ -66,40 +62,16 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
         }
 
         if (msg instanceof HttpContent) {
-            //      Подключение к БД
-            Connection c = null;
-            String user = "root";//Логин пользователя
-            String password = "";//Пароль пользователя
-            String url = "jdbc:mysql://localhost:3306/Teleport";//URL адрес
-            String driver = "com.mysql.jdbc.Driver";//Имя драйвера
-            try {
-                Class.forName(driver);//Регистрируем драйвер
-            } catch (ClassNotFoundException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            //Соединение с БД
-            try{
-                c = DriverManager.getConnection(url, user, password);//Установка соединения с БД
-                System.out.println("Connect to BD: Success");
-            } catch(Exception e){
-                System.out.println("Connect to BD: Faild");
-                e.printStackTrace();
-            }
-//      Подключение к БД
 
+            BD_Connect BD = new BD_Connect(); //Объявление нового экземпляра класса
 
-            String json_input = "";
-            String json_output = "";
-            JSONArray array = new JSONArray();
-
-
+            BD.BD_Connect(); //Подключение к базе данных
 
             HttpContent httpContent = (HttpContent) msg;
 
             ByteBuf content = httpContent.content();
             if (content.isReadable()) {
-                json_input = content.toString(CharsetUtil.UTF_8);
+                JSON_Handler.json_input = content.toString(CharsetUtil.UTF_8);
                 buf.append("CONTENT: ");
                 buf.append(content.toString(CharsetUtil.UTF_8));
                 buf.append("\r\n");
@@ -121,146 +93,20 @@ public class HttpHelloWorldServerHandler extends SimpleChannelInboundHandler<Obj
                 }
                 System.out.println(buf);
 
-                JSONParser parser = new JSONParser();
-                JSONObject request=new JSONObject();
+                JSON_Handler JSON = new JSON_Handler(); //Объявление нового экземпляра класса
 
-                try {
-                   request  = (JSONObject)parser.parse(json_input);
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
+                JSON.JSON_Handler(); // Вызов обработчика JSON запросов
 
-                if (request.get("REQUEST").toString().equals("GETLIST"))
-                {
-                    try {
-                        Statement st = c.createStatement();//Готовим запрос
-                        ResultSet rs = st.executeQuery("select * from Request_list");//Выполняем запрос к БД, результат в переменной rs
-                        while (rs.next()) {
-                            JSONObject buf = new JSONObject();
-                            buf.put("ID", rs.getString("ID"));
-                            buf.put("URI", rs.getString("URI"));
-                            buf.put("TAG", rs.getString("TAG"));
-                            buf.put("LOGIN", rs.getString("LOGIN"));
-                            array.add(buf);
-                        }
-                    }
-                    catch (Exception e) {
-                        System.out.println("Disconnected_BD");
-                    }
-
-
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("ARRAY", array);
-                        json_output = jsonObject.toString();
-
-                }
-                if (request.get("REQUEST").toString().equals("ADDOBJECT"))
-                {
-                    try {
-                        JSONObject ons = (JSONObject) request.get("OBJECT");
-                        Statement st = c.createStatement();//Готовим запрос
-                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString()+ "','" + ons.get("LOGIN").toString() + "')");
-                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','" + ons.get("URI").toString()+ "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
-                    }
-                    catch (Exception e)
-                    {
-                        System.out.println("Disconnected_BD");
-                    }
-//                    Statement st = c.createStatement();//Готовим запрос
-//                    ResultSet rs = st.executeQuery("select * from Request_list");
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("Status", "OK");
-                    json_output = jsonObject.toString();
-                }
-                if (request.get("REQUEST").toString().equals("DELOBJECT"))
-                {
-                    int ons = Integer.parseInt(request.get("ID").toString());
-                    try {
-                        Statement st = c.createStatement();//Готовим запрос
-                        System.out.println("DELETE Request_list WHERE ID ="+ ons);
-                        st.execute("DELETE FROM Request_list WHERE ID = " + ons);//Выполняем запрос к БД
-                    }
-                    catch (Exception e)
-                    {
-                        System.out.println("Disconnected_BD");
-                    }
-                }
-                if (request.get("REQUEST").toString().equals("PUSHSTREAM")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
-                {
-                    try {
-                        JSONObject ons = (JSONObject) request.get("OBJECT");
-                        Statement st = c.createStatement();//Готовим запрос
-                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','http://192.168.0.210:81/hls/" + ons.get("LOGIN").toString() + ".m3u8','" + ons.get("LOGIN").toString() + "')");
-                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','rtmp://192.168.0.210:1936/videochat/" + ons.get("LOGIN").toString() + "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
-                    }
-                    catch (Exception e)
-                    {
-                        System.out.println("Disconnected_BD");
-                    }
-                }
-                if (request.get("REQUEST").toString().equals("AUTHORIZATION")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
-                {
-                    try {
-                        JSONObject ons = (JSONObject) request.get("OBJECT");
-                        Statement st = c.createStatement();//Готовим запрос
-                       ResultSet rs = st.executeQuery("Select 1");
-                        try {
-                            rs = st.executeQuery("select * from User_info WHERE Login = '" +ons.get("LOGIN")+ "'");//Выполняем запрос к БД
-                        }
-                        catch (Exception e)
-                        {
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("Status", "INVALID_LOGIN");
-                            json_output = jsonObject.toString();
-                            System.out.println("INVALID_LOGIN");
-                        }
-                        rs.next();
-                        System.out.println(rs.getString("User_password"));
-                        if (ons.get("PASSWORD").toString().equals(rs.getString("User_password")))
-                        {
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("Status", "OK");
-                            json_output = jsonObject.toString();
-                        }
-                        else
-                        {
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("Status", "PASSWORD_WRONG");
-                            json_output = jsonObject.toString();
-                            System.out.println("PASSWORD_WRONG");
-                        }
-                    } catch (Exception e)
-                    {
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("Status", "ERROR");
-                        json_output = jsonObject.toString();
-                        System.out.println("Disconnected_BD");
-                    }
-                }
-                if (request.get("REQUEST").toString().equals("REGISTRATION")) //НЕДОДЕЛАНО!!! Вообще не сделано!!!
-                {
-                    try {
-                        JSONObject ons = (JSONObject) request.get("OBJECT");
-                        Statement st = c.createStatement();//Готовим запрос
-                        System.out.println("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','http://192.168.0.210:81/hls/" + ons.get("LOGIN").toString() + ".m3u8','" + ons.get("LOGIN").toString() + "')");
-                        st.executeUpdate("INSERT INTO Request_list (TAG, URI, LOGIN) values('" + ons.get("TAG").toString() + "','rtmp://192.168.0.210:1936/videochat/" + ons.get("LOGIN").toString() + "','" + ons.get("LOGIN").toString() + "')");//Выполняем запрос к БД
-                    }
-                    catch (Exception e)
-                    {
-                        System.out.println("Disconnected_BD");
-                    }
-                }
-
-                ByteBuf response_content = Unpooled.wrappedBuffer(json_output.getBytes(CharsetUtil.UTF_8));
+                ByteBuf response_content = Unpooled.wrappedBuffer(JSON_Handler.json_output.getBytes(CharsetUtil.UTF_8));
                 HttpResponse resp = new DefaultFullHttpResponse(HTTP_1_1, OK, response_content);
 
                 ctx.writeAndFlush(resp);
                 ctx.close();
                     //закрытие соединения с БД
                     try {
-                        if(c != null)
+                        if(BD_Connect.c != null)
                             System.out.println("Connection_close");
-                            c.close();
+                        BD_Connect.c.close();
                     } catch (SQLException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
