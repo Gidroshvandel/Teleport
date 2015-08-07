@@ -45,7 +45,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, Object msg) throws SQLException {
+    public void channelRead0(ChannelHandlerContext ctx, Object msg) throws SQLException, IOException {
         if (msg instanceof FullHttpRequest) {
             HttpRequest req = (HttpRequest) msg;
             final HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), req);
@@ -62,14 +62,13 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         if (msg instanceof HttpContent) {
-
-            new BD_Connect().BD_Connect(); //Подключение к базе данных
+            String json_input = "";
 
             HttpContent httpContent = (HttpContent) msg;
 
             ByteBuf content = httpContent.content();
             if (content.isReadable()) {
-                JSON_Handler.json_input = content.toString(CharsetUtil.UTF_8);
+                json_input = content.toString(CharsetUtil.UTF_8);
                 buf.append("CONTENT: ");
                 buf.append(content.toString(CharsetUtil.UTF_8));
                 buf.append("\r\n");
@@ -91,22 +90,22 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object> {
                 }
                 System.out.println(buf);
 
-                new JSON_Handler().JSON_Handler(); // Вызов обработчика JSON запросов
+                try{
+                    Statement st = BD_Connect.c.createStatement();//Готовим запрос
+                    ResultSet rs = st.executeQuery("Select 1");
+                }
+                catch (Exception e) {
+                    new BD_Connect().BD_Connection_open(); //Подключение к базе данных
+                }
 
-                ByteBuf response_content = Unpooled.wrappedBuffer(JSON_Handler.json_output.getBytes(CharsetUtil.UTF_8));
+                String json_output = new JSON_Handler().Parse_JSON(json_input); // Вызов обработчика JSON запросов
+
+                ByteBuf response_content = Unpooled.wrappedBuffer(json_output.getBytes(CharsetUtil.UTF_8));
                 HttpResponse resp = new DefaultFullHttpResponse(HTTP_1_1, OK, response_content);
 
                 ctx.writeAndFlush(resp);
                 ctx.close();
-                    //закрытие соединения с БД
-                    try {
-                        if(BD_Connect.c != null)
-                            System.out.println("Connection_close");
-                        BD_Connect.c.close();
-                    } catch (SQLException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
+                new BD_Connect().BD_Connection_close(); // Закрытие соединения с БД
 
             }
         }
